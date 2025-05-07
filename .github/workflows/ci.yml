@@ -1,0 +1,32 @@
+name: DotNet CI
+
+on:
+  push:
+    branches: [ "master" ]
+    paths-ignore:
+      - "**.md"
+  pull_request:
+    branches: [ "master" ]
+    paths-ignore:
+      - "**.md"
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: windows-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup MSBuild
+        uses: microsoft/setup-msbuild@v2
+        with:
+          msbuild-architecture: x64
+
+      - name: Restore the application
+        run: msbuild MobaXtermKeygen /t:Restore
+
+      - name: Create the app package
+        run: msbuild MobaXtermKeygen -t:rebuild
