@@ -6,6 +6,8 @@
 
 [![DotNet CI](https://github.com/ALI1416/MobaXtermKeygen/actions/workflows/ci.yml/badge.svg)](https://github.com/ALI1416/MobaXtermKeygen/actions/workflows/ci.yml)
 
+[![Latest Download](https://img.shields.io/badge/Latest%20Version-Click%20Download-&color=success)](https://github.com/ALI1416/MobaXtermKeygen/releases/latest/download/MobaXtermKeygen.exe)
+
 ## 简介
 
 MobaXterm许可证生成器
