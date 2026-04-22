@@ -14,6 +14,8 @@ MobaXterm许可证生成器
 
 本项目根据Python语言项目[flygon2018/MobaXterm-keygen](https://github.com/flygon2018/MobaXterm-keygen)改写为Windows桌面程序
 
+[网页版生成器](https://www.404z.cn/demo/MobaXtermKeygen.html)
+
 ## 更新日志
 
 [点击查看](./CHANGELOG.md)

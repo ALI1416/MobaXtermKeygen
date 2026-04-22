@@ -1,0 +1,287 @@
+<!DOCTYPE html>
+<html lang="zh-cmn-Hans">
+
+<head>
+  <meta charset="UTF-8">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>MobaXtermKeygen</title>
+</head>
+<body>
+
+<div>
+  <h1>MobaXterm许可证生成器</h1>
+  <div>
+    <label for="username">用户名：</label>
+    <input type="text" id="username" value="ALI1416" placeholder="请输入用户名">
+  </div>
+  <div>
+    <label for="version">版本号：</label>
+    <input type="text" id="version" value="25.2" placeholder="请输入版本号">
+    <div id="error-msg"></div>
+  </div>
+  <button onclick="generateLicense()">生成许可证</button>
+</div>
+
+<script>
+  /* 变种Base64 */
+  const VariantBase64Table = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/='
+  const VariantBase64Dict = VariantBase64Table.split('')
+  const VariantBase64ReverseDict = {}
+
+  for (let i = 0; i < VariantBase64Dict.length; i++) {
+    VariantBase64ReverseDict[VariantBase64Dict[i]] = i
+  }
+
+  /**
+   * 编码
+   */
+  function variantBase64Encode(bytes) {
+    let result = ''
+    const blocksCount = Math.floor(bytes.length / 3)
+    const leftBytes = bytes.length % 3
+
+    for (let i = 0; i < blocksCount; i++) {
+      const codingInt = bytes[3 * i] + (bytes[3 * i + 1] << 8) + (bytes[3 * i + 2] << 16)
+      result += VariantBase64Dict[codingInt & 0x3F]
+      result += VariantBase64Dict[(codingInt >> 6) & 0x3F]
+      result += VariantBase64Dict[(codingInt >> 12) & 0x3F]
+      result += VariantBase64Dict[(codingInt >> 18) & 0x3F]
+    }
+
+    if (leftBytes === 1) {
+      const codingInt = bytes[3 * blocksCount]
+      result += VariantBase64Dict[codingInt & 0x3F]
+      result += VariantBase64Dict[(codingInt >> 6) & 0x3F]
+    } else if (leftBytes === 2) {
+      const codingInt = bytes[3 * blocksCount] + (bytes[3 * blocksCount + 1] << 8)
+      result += VariantBase64Dict[codingInt & 0x3F]
+      result += VariantBase64Dict[(codingInt >> 6) & 0x3F]
+      result += VariantBase64Dict[(codingInt >> 12) & 0x3F]
+    }
+    return result
+  }
+
+  /**
+   * 编码bytes
+   **/
+  function variantBase64EncryptBytes(key, bytes) {
+    const result = new Uint8Array(bytes.length)
+    for (let i = 0; i < result.length; i++) {
+      result[i] = bytes[i] ^ ((key >> 8) & 0xFF)
+      key = (result[i] & key) | 0x482D
+    }
+    return result
+  }
+
+  /* CRC32 */
+
+  /**
+   * 生成CRC表
+   **/
+  function makeCrcTable() {
+    const table = new Uint32Array(256)
+    for (let i = 0; i < 256; i++) {
+      let temp = i
+      for (let j = 0; j < 8; j++) {
+        if ((temp & 1) === 1) {
+          temp = (0xEDB88320 ^ (temp >>> 1)) >>> 0
+        } else {
+          temp = (temp >>> 1) >>> 0
+        }
+      }
+      table[i] = temp
+    }
+    return table
+  }
+
+  // CRC表
+  const crcTable = makeCrcTable()
+
+  /**
+   * 计算CRC32
+   **/
+  function crc32(buffer) {
+    let crc = 0xFFFFFFFF
+    for (let i = 0; i < buffer.length; i++) {
+      crc = (crc >>> 8) ^ crcTable[(crc ^ buffer[i]) & 0xFF]
+      crc = crc >>> 0
+    }
+    return (crc ^ 0xFFFFFFFF) >>> 0
+  }
+
+  /**
+   * 生成许可证
+   **/
+  function generateLicense() {
+    const usernameInput = document.getElementById('username')
+    const versionInput = document.getElementById('version')
+    const errorMsg = document.getElementById('error-msg')
+
+    const username = usernameInput.value.trim()
+    const version = versionInput.value.trim()
+
+    if (!username) {
+      showError('用户名不可为空！')
+      return
+    }
+
+    const versionSplit = version.split('.')
+    if (versionSplit.length !== 2) {
+      showError('版本号必须为2段！例如25.2')
+      return
+    }
+
+    let majorVersion, minorVersion
+    try {
+      majorVersion = parseInt(versionSplit[0], 10)
+      minorVersion = parseInt(versionSplit[1], 10)
+      if (isNaN(majorVersion) || isNaN(minorVersion)) throw new Error('NaN')
+    } catch (e) {
+      showError('版本号每段都必须为数字！例如25.2')
+      return
+    }
+
+    hideError()
+
+    // 类型 1:Professional 3:Educational 4:Persional
+    const type = 1
+    // 数量
+    const count = 1
+    const licenseString = `${type}#${username}|${majorVersion}${minorVersion}#${count}#${majorVersion}3${minorVersion}6${minorVersion}#0#0#0#`
+
+    const encoder = new TextEncoder()
+    const dataBytes = encoder.encode(licenseString)
+    const encryptedBytes = variantBase64EncryptBytes(0x787, dataBytes)
+    const encodedLicenseString = variantBase64Encode(encryptedBytes)
+
+    const nameStr = 'Pro.key'
+    const nameBytes = encoder.encode(nameStr)
+    const finalDataBytes = encoder.encode(encodedLicenseString)
+
+    const crc = crc32(finalDataBytes)
+    const length = finalDataBytes.length
+    const nameLength = nameBytes.length
+
+    const totalSize = 30 + nameLength + length + 46 + nameLength + 22
+    const buffer = new ArrayBuffer(totalSize)
+    const view = new DataView(buffer)
+    let offset = 0
+
+    function writeBytes(uint8Array) {
+      new Uint8Array(buffer, offset, uint8Array.length).set(uint8Array)
+      offset += uint8Array.length
+    }
+
+    view.setUint32(offset, 0x04034B50, true)
+    offset += 4
+    view.setUint16(offset, 0x0014, true)
+    offset += 2
+    view.setUint16(offset, 0x0000, true)
+    offset += 2
+    view.setUint16(offset, 0x0000, true)
+    offset += 2
+    view.setUint16(offset, 0x0000, true)
+    offset += 2
+    view.setUint16(offset, 0x0021, true)
+    offset += 2
+    view.setUint32(offset, crc, true)
+    offset += 4
+    view.setUint32(offset, length, true)
+    offset += 4
+    view.setUint32(offset, length, true)
+    offset += 4
+    view.setUint16(offset, nameLength, true)
+    offset += 2
+    view.setUint16(offset, 0x0000, true)
+    offset += 2
+    writeBytes(nameBytes)
+    writeBytes(finalDataBytes)
+
+    view.setUint32(offset, 0x02014B50, true)
+    offset += 4
+    view.setUint16(offset, 0x0014, true)
+    offset += 2
+    view.setUint16(offset, 0x0014, true)
+    offset += 2
+    view.setUint16(offset, 0x0000, true)
+    offset += 2
+    view.setUint16(offset, 0x0000, true)
+    offset += 2
+    view.setUint16(offset, 0x0000, true)
+    offset += 2
+    view.setUint16(offset, 0x0021, true)
+    offset += 2
+    view.setUint32(offset, crc, true)
+    offset += 4
+    view.setUint32(offset, length, true)
+    offset += 4
+    view.setUint32(offset, length, true)
+    offset += 4
+    view.setUint16(offset, nameLength, true)
+    offset += 2
+    view.setUint16(offset, 0x0000, true)
+    offset += 2
+    view.setUint16(offset, 0x0000, true)
+    offset += 2
+    view.setUint16(offset, 0x0000, true)
+    offset += 2
+    view.setUint16(offset, 0x0000, true)
+    offset += 2
+    view.setUint32(offset, 0x01800000, true)
+    offset += 4
+    view.setUint32(offset, 0x00000000, true)
+    offset += 4
+    writeBytes(nameBytes)
+
+    view.setUint32(offset, 0x06054B50, true)
+    offset += 4
+    view.setUint16(offset, 0x0000, true)
+    offset += 2
+    view.setUint16(offset, 0x0000, true)
+    offset += 2
+    view.setUint16(offset, 0x0001, true)
+    offset += 2
+    view.setUint16(offset, 0x0001, true)
+    offset += 2
+    const cdSize = 46 + nameLength
+    view.setUint32(offset, cdSize, true)
+    offset += 4
+    const cdOffset = 30 + nameLength + length
+    view.setUint32(offset, cdOffset, true)
+    offset += 4
+    view.setUint16(offset, 0x0000, true)
+    offset += 2
+
+    const blob = new Blob([buffer], {type: 'application/octet-stream'})
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = 'Custom.mxtpro'
+    document.body.appendChild(a)
+    a.click()
+    document.body.removeChild(a)
+    URL.revokeObjectURL(url)
+
+    alert('许可证生成成功！\r\n文件 Custom.mxtpro 已下载\r\n请将该文件移动到MobaXterm程序根目录')
+  }
+
+  /**
+   * 显示错误
+   **/
+  function showError(msg) {
+    const el = document.getElementById('error-msg')
+    el.textContent = msg
+    el.style.display = 'block'
+  }
+
+  /**
+   * 隐藏错误
+   **/
+  function hideError() {
+    document.getElementById('error-msg').style.display = 'none'
+  }
+</script>
+
+</body>
+</html>
